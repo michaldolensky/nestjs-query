@@ -1,6 +1,7 @@
 import { Class, mergeQuery, MetaValue, QueryService } from '@nestjs-query/core';
 import { ArgsType, Resolver, Context } from '@nestjs/graphql';
 import omit from 'lodash.omit';
+import { OffsetConnectionOptions } from '../types/connection/offset';
 import { getDTONames } from '../common';
 import { getQueryManyHook, HookArgs, ResolverQuery, HookFunc, getFindOneHook } from '../decorators';
 import {
@@ -21,7 +22,7 @@ import {
   ResolverOpts,
   ServiceResolver,
 } from './resolver.interface';
-import { getAuthFilter, transformAndValidate } from './helpers';
+import { extractConnectionOptsFromQueryArgs, getAuthFilter, transformAndValidate } from './helpers';
 
 export type ReadResolverFromOpts<
   DTO,
@@ -34,7 +35,7 @@ export type ReadResolverOpts<DTO> = {
   Connection?: StaticConnectionType<DTO>;
 } & ResolverOpts &
   QueryArgsTypeOpts<DTO> &
-  Pick<CursorConnectionOptions, 'enableTotalCount'>;
+  Pick<CursorConnectionOptions | OffsetConnectionOptions, 'enableTotalCount'>;
 
 export interface ReadResolver<
   DTO,
@@ -59,7 +60,10 @@ export const Readable = <DTO, ReadOpts extends ReadResolverOpts<DTO>, QS extends
   const readManyQueryName = opts.many?.name ?? pluralBaseNameLower;
   const { QueryArgs = QueryArgsType(DTOClass, opts) } = opts;
   const {
-    Connection = ConnectionType(DTOClass, QueryArgs, { ...opts, connectionName: `${baseName}Connection` }),
+    Connection = ConnectionType(
+      DTOClass,
+      extractConnectionOptsFromQueryArgs(QueryArgs, { ...opts, connectionName: `${baseName}Connection` }),
+    ),
   } = opts;
 
   const commonResolverOpts = omit(opts, 'dtoName', 'one', 'many', 'QueryArgs', 'Connection');
